@@ -1,0 +1,22 @@
+#!/bin/bash
+
+[ -d ~/.cfgsync/data ] || mkdir -p ~/.cfgsync/data
+[ -f ~/.cfgsync/list ] || touch ~/.cfgsync/list
+
+usage() {
+	echo "Usage: $0 backup"
+	exit 1;
+}
+
+[ -z "$1" ] && usage
+[ "$1" != "backup" ] && usage
+
+cat ~/.cfgsync/list | grep -v '^#' | grep -v '^\s$' | while read f; do
+	if [ "${f:0:1}" == "/" ]; then
+		cp -auv $f ~/.cfgsync/$f
+	elif [ "${f:0:2}" == "~/" ]; then
+		cp -auv ~/${f:2} ~/.cfgsync/${f:2}
+	else
+		cp -auv ~/$f ~/.cfgsync/$f
+	fi
+done
