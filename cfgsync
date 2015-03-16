@@ -4,19 +4,94 @@
 [ -f ~/.cfgsync/list ] || touch ~/.cfgsync/list
 
 usage() {
-	echo "Usage: $0 backup"
+	echo "Usage: $0 {save|restore|backup|diff}"
 	exit 1;
 }
 
-[ -z "$1" ] && usage
-[ "$1" != "backup" ] && usage
+save_files() {
+	cat ~/.cfgsync/list | grep -v '^#' | grep -v '^\s$' | while read f; do
+		if [ "${f:0:1}" == "/" ]; then
+			SRC=$f
+			DST=~/.cfgsync/data/$f
+		elif [ "${f:0:2}" == "~/" ]; then
+			SRC=${f:2}
+			DST=~/.cfgsync/data/${f:2}
+		else
+			SRC=~/$f
+			DST=~/.cfgsync/data/$f
+		fi
+		if [ ! -f ${SRC} ]; then
+			echo "Warning: '${SRC}' is not a regular file!"
+			exit 1;
+		fi
+		cp -auv ${SRC} ${DST}
+	done
+}
 
-cat ~/.cfgsync/list | grep -v '^#' | grep -v '^\s$' | while read f; do
-	if [ "${f:0:1}" == "/" ]; then
-		cp -auv $f ~/.cfgsync/$f
-	elif [ "${f:0:2}" == "~/" ]; then
-		cp -auv ~/${f:2} ~/.cfgsync/${f:2}
+restore_files() {
+	cat ~/.cfgsync/list | grep -v '^#' | grep -v '^\s$' | while read f; do
+		if [ "${f:0:1}" == "/" ]; then
+			DST=$f
+			SRC=~/.cfgsync/data/$f
+		elif [ "${f:0:2}" == "~/" ]; then
+			DST=${f:2}
+			SRC=~/.cfgsync/data/${f:2}
+		else
+			DST=~/$f
+			SRC=~/.cfgsync/data/$f
+		fi
+		if [ ! -f ${SRC} ]; then
+			echo "Warning: '${SRC}' is not a regular file!"
+			exit 1;
+		fi
+		cp -auv ${SRC} ${DST}
+	done
+}
+
+backup_files() {
+	if [ -z "$1" ]; then
+		OUTPUT=$(date '+%Y%m%d%H%M')_cfgsync.tar.gz
 	else
-		cp -auv ~/$f ~/.cfgsync/$f
+		OUTPUT=$1
 	fi
-done
+	tar c -C ~/ .cfgsync | gzip -9 > ${OUTPUT}
+	echo "Backup to '${OUTPUT}' successfully."
+}
+
+diff_files() {
+	cat ~/.cfgsync/list | grep -v '^#' | grep -v '^\s$' | while read f; do
+		if [ "${f:0:1}" == "/" ]; then
+			SRC=$f
+			DST=~/.cfgsync/data/$f
+		elif [ "${f:0:2}" == "~/" ]; then
+			SRC=${f:2}
+			DST=~/.cfgsync/data/${f:2}
+		else
+			SRC=~/$f
+			DST=~/.cfgsync/data/$f
+		fi
+		if [ ! -f ${SRC} ]; then
+			echo "Warning: '${SRC}' is not a regular file!"
+			exit 1;
+		fi
+		diff ${SRC} ${DST}
+	done
+}
+
+case "$1" in
+	save)
+		save_files
+		;;
+	restore)
+		restore_files
+		;;
+	backup)
+		backup_files
+		;;
+	diff)
+		diff_files
+		;;
+	*)
+		usage
+		;;
+esac
